@@ -16,9 +16,11 @@ Access to Google Cloud APIs provided from endpoints in Pivotal Cloud Foundry.
 
  1. Create a new service account in GCP
  2. Authorize the above service account for editor access to the desired GCP storage container
- 3. Add OAuth JSON to `VCAP_SERVICES` in a field called `"PrivateKeyData"` using the output from the following command:
+ 3. Add OAuth JSON to `VCAP_SERVICES` in a field within `credentials` called `PrivateKeyData` using the output from the following command:
 
+```
     cat <FILENAME FROM GCP>.json | base64
+```
 
 For local testing, create a file call `vcap_local.json` formatted like this:
 
