@@ -12,6 +12,13 @@ Access to Google Cloud APIs provided from endpoints in Pivotal Cloud Foundry.
     cf bind-service google-api-service google-ml -c '{"role": "viewer"}'
     cf start APP_NAME
 
+## Google API credential setup
+
+ 1. Create a new service account in GCP
+ 2. Authorize the above service account for editor access to the desired GCP storage container
+ 3. Add OAuth JSON to `VCAP_SERVICES` in a field called `"PrivateKeyData"` using the output from the following command:
+
+    cat <FILENAME FROM GCP>.json | base64
 
 ## Test NLP with curl:
 
