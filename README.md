@@ -20,6 +20,30 @@ Access to Google Cloud APIs provided from endpoints in Pivotal Cloud Foundry.
 
     cat <FILENAME FROM GCP>.json | base64
 
+For local testing, create a file call `vcap_local.json` formatted like this:
+
+```
+{
+  "google-ml-apis" :[{
+    "name": "google-ml",
+    "credentials": {
+     "Email": "<YOUR SERVICE ACCOUNT EMAIL>",
+     "Name": "pcf-binding-kdunn",
+     "PrivateKeyData": "<OUTPUT FROM COMMAND ABOVE>",
+     "ProjectId": "<YOUR PROJECT NAME>",
+     "UniqueId": "<YOUR PROJECT ID>",
+     "bucket_name": "<YOUR STORAGE BUCKET URL>"
+    }
+  }]
+}
+```
+
+where `google-ml-apis` and `google-ml` match the global variables in `helper_functions.py` (SERVICE_NAME and SERVICE_INSTANCE_NAME respectively)
+
+then store this data in an environment variable:
+
+    export VCAP_SERVICES=`cat vcap_local.json`
+
 ## Test NLP with curl:
 
 `curl --data '{"content": "New Yorkers will choose one of five finalists for residents in all five boroughs to read as part of a city program."}' http://google-api-service.apps.pcfongcp.com/nlp`
