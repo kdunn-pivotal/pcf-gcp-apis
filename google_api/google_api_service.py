@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify 
 import helper_functions
 from helper_functions import (
     DEFAULT_LIMIT, entity_annotation_to_dict
@@ -59,6 +59,27 @@ def handle_vision_request():
         )
     return jsonify(dict(responses=responses))
 
+@app.route('/storage/<bucket>/<blob>', methods=['GET', 'POST'])
+@helper_functions.crossdomain(origin='*')
+def handle_storage_request(bucket, blob):
+    if request.method == 'POST':
+        new_blob = helper_functions.create_blob(request.data, blob, bucket, 
+                                                request.headers['content-type'], 
+                                                create_bucket=True)
+        return jsonify({
+            'created': '{0} in bucket {1}'.format(blob, bucket)
+        })
+    elif request.method == 'GET':
+        requested_blob = helper_functions.get_blob(bucket, blob)
+        return jsonify({
+            'content-type' : requested_blob.content_type,
+            'content-length' : requested_blob.size,
+            'data': requested_blob.download_as_string()
+        })
+    else:
+        return jsonify({
+            'reponse' : "{0} method not supported".format(request.method)
+        })
 
 if __name__ == "__main__":
     if os.environ.get('VCAP_SERVICES') is None: # running locally

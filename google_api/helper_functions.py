@@ -9,7 +9,11 @@ import base64
 from flask import make_response, request, current_app
 from google.cloud import language
 from google.cloud import vision
+from google.cloud import storage
 from google.cloud.vision.image import Image
+from google.cloud.storage.bucket import Bucket
+from google.cloud.storage.blob import Blob
+from google.cloud.exceptions import NotFound
 from google.oauth2.service_account import Credentials
 
 
@@ -19,7 +23,8 @@ SERVICE_INSTANCE_NAME = 'google-ml'
 CREDENTIALS = None
 clients = {
     'nlp': None,
-    'vision': None
+    'vision': None,
+    'storage': None
 }
 vision_features = {
     v: vision.feature.Feature(v, max_results=10)
@@ -88,6 +93,17 @@ def get_vision_client():
             credentials=get_google_cloud_credentials()
         )
     return clients['vision']
+
+def get_storage_client():
+    global clients
+    if clients.get('storage') is None:
+        service_info = get_service_instance_dict()
+        project_id = service_info['credentials']['ProjectId']
+        clients['storage'] = storage.Client(
+            project=project_id,
+            credentials=get_google_cloud_credentials()
+        )
+    return clients['storage'] 
 
 
 def get_text_entities(text):
@@ -159,6 +175,33 @@ def entity_annotation_to_dict(entity_annotation):
         for field in entity_annotation_fields
     }
 
+## Storage
+
+def get_storage_bucket(bucket_name, create_new=True):
+    client = get_storage_client()
+    try:
+        return client.get_bucket(bucket_name)
+    except NotFound:
+        if create_new:
+            return client.create_bucket(bucket_name)
+
+def get_blob(bucket_name, blob_name):
+    bucket = get_storage_bucket(bucket_name, create_new=False)
+    desired_blob = bucket.get_blob(blob_name)
+    if isinstance(desired_blob, Blob):
+        return desired_blob
+    else:
+        raise NotFound("Blob : {0} does not exist".format(blob_name))
+
+def create_blob(payload, blob_name, bucket_name, content_type="text/plain", 
+                create_bucket=True):
+    bucket = get_storage_bucket(bucket_name, create_new=create_bucket)
+
+    new_blob = Blob(blob_name, bucket)
+    new_blob.upload_from_string(payload, content_type=content_type)
+
+    return new_blob
+ 
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
