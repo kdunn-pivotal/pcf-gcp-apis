@@ -51,6 +51,7 @@ then store this data in an environment variable:
 ## Test NLP with curl:
 
 `curl --data '{"content": "New Yorkers will choose one of five finalists for residents in all five boroughs to read as part of a city program."}' http://127.0.0.1:5000/nlp`
+```
     {
       "entites": {
         "documentSentiment": {
@@ -759,6 +760,7 @@ then store this data in an environment variable:
         ]
       }
     }
+```
 
 ## Test Vision with curl
 
@@ -768,6 +770,7 @@ Run from root directory of repo, because the command refers to the test JSON
 request included in the tests directory.
 
 `curl -H "Content-Type:application/json" -X POST http://127.0.0.1:5000/vision/ocr --data-binary "@tests/coke.jpg"`
+```
     [
       {
         "textAnnotations": [
@@ -913,8 +916,10 @@ request included in the tests directory.
         ]
       }
     ]
+```
 
 `curl -H "Content-Type:application/json" -X POST http://127.0.0.1:5000/vision/logos --data-binary "@tests/coke.jpg"`
+```
     [
       {
         "logoAnnotations": [
@@ -946,13 +951,18 @@ request included in the tests directory.
         ]
       }
     ]
+```
 
 ## Test Storage with curl
 
 `curl -H "Content-type: application/json" -d "test post" -X POST http://127.0.0.1:5000/storage/pde-kdunn.appspot.com/test`
+```
     {
       "created": "test in bucket pde-kdunn.appspot.com"
     }
+```
 
 `curl -X GET http://127.0.0.1:5000/storage/pde-kdunn.appspot.com/test`
+```
     "test post"
+```
