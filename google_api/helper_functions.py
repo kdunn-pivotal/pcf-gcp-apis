@@ -9,7 +9,7 @@ from io import StringIO
 
 import httplib2
 from flask import make_response, request, current_app, jsonify
-from googleapiclient import discovery, errors
+from googleapiclient import discovery, errors, http 
 
 """
 from google.cloud import language
@@ -219,14 +219,13 @@ def create_blob(payload, blob_name, bucket_name, content_type="text/plain",
         'name': blob_name,
     }
 
+    p = StringIO(unicode(payload, "utf-8"))
     req = get_google_client("storage").objects().insert(
         bucket=bucket_name, body=body,
-        p = StringIO(base64.b64encode(payload)),
         # You can also just set media_body=filename, but for the sake of
         # demonstration, pass in the more generic file handle, which could
         # very well be a StringIO or similar.
-        media_body=googleapiclient.http.MediaIoBaseUpload(
-            p, 'application/octet-stream'))
+        media_body=http.MediaIoBaseUpload(p, 'application/octet-stream'))
     resp = req.execute()
 
     return resp
