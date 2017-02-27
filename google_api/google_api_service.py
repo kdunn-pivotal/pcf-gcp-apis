@@ -21,9 +21,9 @@ def handle_google_api_request():
 #@helper_functions.crossdomain(origin='*')
 def handle_nlp_request():
     req = request.get_json(force=True)
-    first_entity_string = helper_functions.first_entity_str(req['content'])
+    results = helper_functions.get_text_entities(req['content'])
     return jsonify({
-        'first_entity_string': first_entity_string
+        'entites': results
     })
 
 

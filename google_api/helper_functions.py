@@ -102,13 +102,34 @@ def get_google_client(name, version='v1'):
     return clients[name]
 
 
-"""
-def get_text_entities(text):
+def get_text_entities(text, content_type="PLAIN_TEXT", encoding='UTF8'):
+    # content_types can be:
+    # PLAIN_TEXT, HTML
+    #
+
+    # encodings can be: 
+    # NONE, UTF8, UTF16, UTF32
+    #
+
     client = get_google_client("language")
-    doc = client.document_from_text(text)
-    return doc.analyze_entities()
+
+    body = { "encodingType": encoding, 
+        "document" : {
+            "content" : text,
+            "type" : content_type
+        },
+        "features" : {
+            "extractDocumentSentiment" : True,
+            "extractEntities" : True,
+            "extractSyntax" : True   
+        }
+    }
+
+    resp = client.documents().annotateText(body=body).execute()
+    return resp
 
 
+"""
 def entity_to_str(entity):
     return "{}: {}".format(entity.entity_type, entity.name)
 
@@ -168,6 +189,9 @@ def get_image_text(image, l=DEFAULT_LIMIT):
 
 def get_image_logos(image, l=DEFAULT_LIMIT):
     return get_image_feature(image, ["LOGO_DETECTION"], limit=l)
+
+def get_image_faces(image, l=DEFAULT_LIMIT):
+    return get_image_feature(image, ["FACE_DETECTION"], limit=l)
 
 ## Storage
 
