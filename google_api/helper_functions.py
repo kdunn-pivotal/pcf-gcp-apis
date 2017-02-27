@@ -9,8 +9,9 @@ from io import StringIO
 
 import httplib2
 from flask import make_response, request, current_app, jsonify
-from googleapiclient import discovery
+from googleapiclient import discovery, errors
 
+"""
 from google.cloud import language
 #from google.cloud import vision
 from google.cloud import storage
@@ -18,6 +19,8 @@ from google.cloud.vision.image import Image
 from google.cloud.storage.bucket import Bucket
 from google.cloud.storage.blob import Blob
 from google.cloud.exceptions import NotFound
+"""; 
+
 from google.oauth2.service_account import Credentials
 
 
@@ -169,19 +172,19 @@ def get_image_logos(image, l=DEFAULT_LIMIT):
 ## Storage
 
 def get_storage_bucket(bucket_name, create_new=True):
-    request = get_google_client("storage").buckets().get(bucket=bucket_name)
-    resp = request.execute()
-    if (resp.response_code == 404) and create_new:
-        request = get_google_client("storage").buckets().insert(bucket=bucket_name)
-        resp = request.execute()
+    _request = get_google_client("storage").buckets().get(bucket=bucket_name)
+    try:
+        resp = _request.execute()
         return resp
-    else:
-        return resp
+    except errors.HttpError, e:
+        if create_new:
+            request = get_google_client("storage").buckets().insert(bucket=bucket_name)
+            resp = request.execute()
+            return resp
 
 def get_blob(bucket_name, blob_name):
-    bucket = get_storage_bucket(bucket_name, create_new=False)
-    resp = bucket.objects().get(blob_name).execute()
-    return resp
+    req = get_google_client("storage").objects().get_media(bucket=bucket_name, object=blob_name)
+    return req.execute()
 
 def create_blob(payload, blob_name, bucket_name, content_type="text/plain", 
                 create_bucket=True):
@@ -204,7 +207,7 @@ def create_blob(payload, blob_name, bucket_name, content_type="text/plain",
 
     return resp
  
-
+"""
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
                 automatic_options=True):
@@ -247,3 +250,4 @@ def crossdomain(origin=None, methods=None, headers=None,
         f.provide_automatic_options = False
         return update_wrapper(wrapped_function, f)
     return decorator
+""";

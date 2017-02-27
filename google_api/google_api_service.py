@@ -11,14 +11,14 @@ def main():
     return "Hello World!"
 
 @app.route('/api', methods=['POST','OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_google_api_request():
     req = request.get_json(force=True)
     return jsonify(req)
 
 
 @app.route('/nlp', methods=['POST','OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_nlp_request():
     req = request.get_json(force=True)
     first_entity_string = helper_functions.first_entity_str(req['content'])
@@ -28,7 +28,7 @@ def handle_nlp_request():
 
 
 @app.route('/vision', methods=['POST','OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_vision_request():
     """Expecting JSON request as outlined in
     https://cloud.google.com/vision/docs/reference/rest/v1/images/annotate
@@ -60,7 +60,7 @@ def handle_vision_request():
     return jsonify(dict(responses=responses))
 
 @app.route('/vision/ocr', methods=['POST','OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_vision_text_request():
     text_list = helper_functions.get_image_text(request.data)
 
@@ -69,14 +69,14 @@ def handle_vision_text_request():
     return jsonify(text_list)
 
 @app.route('/vision/logos', methods=['POST','OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_vision_logo_request():
     logo_list = helper_functions.get_image_logos(request.data)
 
     return jsonify(logo_list)
 
 @app.route('/storage/<bucket>/<blob>', methods=['GET', 'POST', 'OPTIONS'])
-@helper_functions.crossdomain(origin='*')
+#@helper_functions.crossdomain(origin='*')
 def handle_storage_request(bucket, blob):
     if request.method == 'POST':
         new_blob = helper_functions.create_blob(request.data, blob, bucket, 
@@ -87,11 +87,7 @@ def handle_storage_request(bucket, blob):
         })
     elif request.method == 'GET':
         requested_blob = helper_functions.get_blob(bucket, blob)
-        return jsonify({
-            'content-type' : requested_blob.content_type,
-            'content-length' : requested_blob.size,
-            'data': requested_blob.download_as_string()
-        })
+        return jsonify(requested_blob)
     else:
         return jsonify({
             'reponse' : "{0} method not supported".format(request.method)
