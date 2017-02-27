@@ -5,10 +5,14 @@ from datetime import timedelta
 from functools import update_wrapper
 from operator import itemgetter
 import base64
+from io import StringIO
 
-from flask import make_response, request, current_app
+import httplib2
+from flask import make_response, request, current_app, jsonify
+from googleapiclient import discovery
+
 from google.cloud import language
-from google.cloud import vision
+#from google.cloud import vision
 from google.cloud import storage
 from google.cloud.vision.image import Image
 from google.cloud.storage.bucket import Bucket
@@ -22,22 +26,32 @@ SERVICE_NAME = 'google-ml-apis'
 SERVICE_INSTANCE_NAME = 'google-ml'
 CREDENTIALS = None
 clients = {
-    'nlp': None,
+    'language': None,
     'vision': None,
     'storage': None
 }
-vision_features = {
-    v: vision.feature.Feature(v, max_results=10)
-    for k, v in vision.feature.FeatureTypes.__dict__.items()
-    if not k.startswith('_')
-}
+vision_features = [
+    {
+        "type":"LABEL_DETECTION",
+        "maxResults": 10
+    },
+    {
+        "type":"TEXT_DETECTION",
+        "maxResults": 10
+    },
+    {
+        "type":"FACE_DETECTION",
+        "maxResults": 20
+    }
+]
+ 
 entity_annotation_fields = (
-    'bounds',
-    'description',
-    'locale',
-    'locations',
-    'mid',
-    'score'
+'bounds',
+'description',
+'locale',
+'locations',
+'mid',
+'score'
 )
 
 
@@ -75,39 +89,19 @@ def get_google_cloud_credentials():
         CREDENTIALS = Credentials.from_service_account_info(pkey_dict)
     return CREDENTIALS
 
-
-def get_nlp_client():
+def get_google_client(name, version='v1'):
     global clients
-    if clients.get('nlp') is None:
-        clients['nlp'] = language.Client(get_google_cloud_credentials())
-    return clients['nlp']
+    if clients.get(name) is None:
+        credentials = get_google_cloud_credentials()
+
+        clients[name] = discovery.build(name, version, credentials=credentials)
+
+    return clients[name]
 
 
-def get_vision_client():
-    global clients
-    if clients.get('vision') is None:
-        service_info = get_service_instance_dict()
-        project_id = service_info['credentials']['ProjectId']
-        clients['vision'] = vision.Client(
-            project=project_id,
-            credentials=get_google_cloud_credentials()
-        )
-    return clients['vision']
-
-def get_storage_client():
-    global clients
-    if clients.get('storage') is None:
-        service_info = get_service_instance_dict()
-        project_id = service_info['credentials']['ProjectId']
-        clients['storage'] = storage.Client(
-            project=project_id,
-            credentials=get_google_cloud_credentials()
-        )
-    return clients['storage'] 
-
-
+"""
 def get_text_entities(text):
-    client = get_nlp_client()
+    client = get_google_client("language")
     doc = client.document_from_text(text)
     return doc.analyze_entities()
 
@@ -123,84 +117,92 @@ def first_entity_str(text):
         return entity_to_str(entity)
     else:
         return ''
+""";
 
+def read_image_base64(image):
+    if isinstance(image, basestring) and image.lower().startswith('http'):
+        response = urllib.request.urlopen(url)
+        data = response.read()
+        return base64.b64encode(data.decode('utf-8'))
+
+    else:
+        return base64.b64encode(image)        
 
 ## Vision: Funcs to get labels
 
-def get_image_labels_from_url(image_url, limit=DEFAULT_LIMIT):
+def get_image_feature(image_url_or_bytes, feature_list, limit=DEFAULT_LIMIT):
     """
     :param image_url: str URL
     :param limit: int Max number of results to return
-    :return: list of `google.cloud.vision.entity.EntityAnnotation` instances
-    """
-    image = Image(get_vision_client(), source_uri=image_url)
-    return image.detect_labels(limit=limit)
-
-
-def get_image_labels_from_bytes(image_bytes, limit=DEFAULT_LIMIT):
-    """
-    :param image_bytes: str image bytes
-    :param limit: int Max number of results to return
-    :return: list of `google.cloud.vision.entity.EntityAnnotation` instances
-    """
-    image = Image(get_vision_client(), content=image_bytes)
-    return image.detect_labels(limit=limit)
-
-
-def get_image_labels_from_base64(image_base64, limit=DEFAULT_LIMIT):
-    image_bytes = base64.urlsafe_b64decode(str(image_base64))
-    return get_image_labels_from_bytes(image_bytes, limit=limit)
-
-
-def get_image_labels(image, limit=DEFAULT_LIMIT):
-    """
-    :param image: str image URL or bytes
-    :param limit: int Max number of results to return
-    :return: list of `google.cloud.vision.entity.EntityAnnotation` instances
-    """
-    if isinstance(image, basestring) and image.lower().startswith('http'):
-        return get_image_labels_from_url(image, limit=limit)
-    else:
-        return get_image_labels_from_bytes(image, limit=limit)
-
-
-def entity_annotation_to_dict(entity_annotation):
+    :return: list of annotation dictionaries
     """
 
-    :param entity_annotation: type `google.cloud.vision.entity.EntityAnnotation`
-    :return:
-    """
-    return {
-        field: getattr(entity_annotation, field)
-        for field in entity_annotation_fields
+    request = { "requests": [{
+        "image": {
+            "content": read_image_base64(image_url_or_bytes)
+        },
+        "features" : ""
+      }]
     }
+
+    request['requests'][0]['features'] = [{ 'type': f, "maxResults": limit } for f in feature_list]
+
+    print request
+    
+    reponse_dict = get_google_client("vision").images().annotate(body=request).execute()
+
+    annotation_list = []
+    if 'responses' in reponse_dict:
+        annotation_list = reponse_dict['responses']
+    
+    return annotation_list
+
+def get_image_labels(image, l=DEFAULT_LIMIT):
+    return get_image_feature(image, ["LABEL_DETECTION"], limit=l)
+
+def get_image_text(image, l=DEFAULT_LIMIT):
+    return get_image_feature(image, ["TEXT_DETECTION"], limit=l)
+
+def get_image_logos(image, l=DEFAULT_LIMIT):
+    return get_image_feature(image, ["LOGO_DETECTION"], limit=l)
 
 ## Storage
 
 def get_storage_bucket(bucket_name, create_new=True):
-    client = get_storage_client()
-    try:
-        return client.get_bucket(bucket_name)
-    except NotFound:
-        if create_new:
-            return client.create_bucket(bucket_name)
+    request = get_google_client("storage").buckets().get(bucket=bucket_name)
+    resp = request.execute()
+    if (resp.response_code == 404) and create_new:
+        request = get_google_client("storage").buckets().insert(bucket=bucket_name)
+        resp = request.execute()
+        return resp
+    else:
+        return resp
 
 def get_blob(bucket_name, blob_name):
     bucket = get_storage_bucket(bucket_name, create_new=False)
-    desired_blob = bucket.get_blob(blob_name)
-    if isinstance(desired_blob, Blob):
-        return desired_blob
-    else:
-        raise NotFound("Blob : {0} does not exist".format(blob_name))
+    resp = bucket.objects().get(blob_name).execute()
+    return resp
 
 def create_blob(payload, blob_name, bucket_name, content_type="text/plain", 
                 create_bucket=True):
-    bucket = get_storage_bucket(bucket_name, create_new=create_bucket)
 
-    new_blob = Blob(blob_name, bucket)
-    new_blob.upload_from_string(payload, content_type=content_type)
+    # This is the request body as specified:
+    # http://g.co/cloud/storage/docs/json_api/v1/objects/insert#request
+    body = {
+        'name': blob_name,
+    }
 
-    return new_blob
+    req = get_google_client("storage").objects().insert(
+        bucket=bucket_name, body=body,
+        p = StringIO(base64.b64encode(payload)),
+        # You can also just set media_body=filename, but for the sake of
+        # demonstration, pass in the more generic file handle, which could
+        # very well be a StringIO or similar.
+        media_body=googleapiclient.http.MediaIoBaseUpload(
+            p, 'application/octet-stream'))
+    resp = req.execute()
+
+    return resp
  
 
 def crossdomain(origin=None, methods=None, headers=None,

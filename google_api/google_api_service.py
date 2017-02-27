@@ -2,9 +2,7 @@ import os
 
 from flask import Flask, request, jsonify 
 import helper_functions
-from helper_functions import (
-    DEFAULT_LIMIT, entity_annotation_to_dict
-)
+from helper_functions import DEFAULT_LIMIT
 
 app = Flask(__name__)
 
@@ -54,12 +52,30 @@ def handle_vision_request():
         # alternatives to 'content' bytes not currently implemented
         else:
             labels = []
+        """
         responses.append(
             dict(labelAnnotations=list(map(entity_annotation_to_dict, labels)))
         )
+        """;
     return jsonify(dict(responses=responses))
 
-@app.route('/storage/<bucket>/<blob>', methods=['GET', 'POST'])
+@app.route('/vision/ocr', methods=['POST','OPTIONS'])
+@helper_functions.crossdomain(origin='*')
+def handle_vision_text_request():
+    text_list = helper_functions.get_image_text(request.data)
+
+    print text_list
+
+    return jsonify(text_list)
+
+@app.route('/vision/logos', methods=['POST','OPTIONS'])
+@helper_functions.crossdomain(origin='*')
+def handle_vision_logo_request():
+    logo_list = helper_functions.get_image_logos(request.data)
+
+    return jsonify(logo_list)
+
+@app.route('/storage/<bucket>/<blob>', methods=['GET', 'POST', 'OPTIONS'])
 @helper_functions.crossdomain(origin='*')
 def handle_storage_request(bucket, blob):
     if request.method == 'POST':
