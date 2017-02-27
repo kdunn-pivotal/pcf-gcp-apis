@@ -3,6 +3,8 @@ Access to Google Cloud APIs provided from endpoints in Pivotal Cloud Foundry.
 
 ## Python dependencies:
 
+- >= google-cloud-core 0.23.0
+
 `pip install --upgrade google-cloud`
 
 ## Cloud Foundry setup
@@ -52,7 +54,9 @@ then store this data in an environment variable:
 
 ## Test Vision with curl
 
+Note: watch out for this [bug](https://github.com/GoogleCloudPlatform/google-cloud-python/pull/2961) when using OCR.
+
 Run from root directory of repo, because the command refers to the test JSON 
 request included in the tests directory.
 
-`curl -d @tests/vision_request.json http://google-api-service.apps.pcfongcp.com/vision`
+`curl -H "Content-Type:application/json" --data-bindary "@tests/vision_request.json" http://google-api-service.apps.pcfongcp.com/vision`
